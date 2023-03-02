@@ -1,5 +1,7 @@
 FROM python:3.9-slim-buster
 
+MAINTAINER LinkunGao<gaolinkun123@gmail.com>
+
 WORKDIR /segmentation_gui_backend
 
 COPY requirements.txt .
