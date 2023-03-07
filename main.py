@@ -2,19 +2,19 @@
 # terminial-> venv/Scripts/activate.bat
 import uvicorn
 import time
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from zipfile import ZipFile
-from utils import check_file_exist, get_real_path, tools
+from utils import tools
 from models import model
+import os
+from io import BytesIO
+from task import task_oi
 
 app = FastAPI()
 
 origins = [
-    "http://localhost.tiangolo.com",
-    "https://localhost.tiangolo.com",
-    "http://localhost",
     "http://127.0.0.1:5173",
 ]
 
@@ -31,6 +31,7 @@ IMPORT_FOLDER_PATH = "import_nrrd"
 EXPORT_FOLDER_PATH = "export_data"
 CASE_NAMES = []
 
+
 #
 # @app.on_event("startup")
 # async def startup_event():
@@ -38,27 +39,26 @@ CASE_NAMES = []
 #     b = tools.get_all_file_names(IMPORT_FOLDER_PATH, "case1")
 #     print(b)
 
+
 @app.get('/')
 async def root():
     return "Welcome to segmentation backend"
 
+
 @app.get('/api/cases')
-async def get_cases_name():
-    start_time = time.time()
-    if tools.MASKS is not None:
-        tools.saveMaskData()
-        end_time = time.time()
-        run_time = end_time - start_time
-        print("save json cost：{:.2f}s".format(run_time))
+async def get_cases_name(background_tasks: BackgroundTasks):
+    # tools.save()
+    background_tasks.add_task(tools.save)
     folder_path = IMPORT_FOLDER_PATH
     CASE_NAMES = tools.get_all_folder_names(folder_path)
     filename = "mask.json"
     res = {}
     res["names"] = CASE_NAMES
     res["details"] = []
-    for directory in CASE_NAMES:
-        is_exist = check_file_exist(directory, filename)
-        res["details"].append({"name": directory, "masked": is_exist})
+    for subdirectory in CASE_NAMES:
+        # is_exist = check_file_exist(directory, filename)
+        is_exist = tools.check_mask_json_file(EXPORT_FOLDER_PATH, subdirectory, filename)
+        res["details"].append({"name": subdirectory, "masked": is_exist})
     return res
 
 
@@ -66,10 +66,16 @@ async def get_cases_name():
 async def send_nrrd_case(name: str = Query(None)):
     start_time = time.time()
     if name is not None:
+        cwd = os.getcwd()
+        tools.FOLDER_PATH = os.path.join(cwd, EXPORT_FOLDER_PATH, name)
         file_names = tools.get_all_file_names(IMPORT_FOLDER_PATH, name)
         file_paths = []
         for file in file_names:
             file_paths.append(f'./{IMPORT_FOLDER_PATH}/{name}/{file}')
+
+        is_exist = tools.check_mask_json_file(EXPORT_FOLDER_PATH, name, "mask.json")
+        if is_exist:
+            file_paths.append(f"./{EXPORT_FOLDER_PATH}/{name}/mask.json")
         with ZipFile('nrrd_files.zip', 'w') as zip_file:
             for file_path in file_paths:
                 zip_file.write(file_path)
@@ -81,18 +87,35 @@ async def send_nrrd_case(name: str = Query(None)):
 
 @app.post("/api/mask/init")
 async def init_mask(mask: model.Masks):
-    tools.write_data_to_json(IMPORT_FOLDER_PATH,mask.caseId,mask.masks)
+    tools.write_data_to_json(EXPORT_FOLDER_PATH, mask.caseId, mask.masks)
     return True
+
 
 @app.post("/api/mask/replace")
 async def replace_mask(replace_slice: model.Mask):
-    tools.replace_data_to_json(IMPORT_FOLDER_PATH,replace_slice.caseId, replace_slice)
+    tools.replace_data_to_json(EXPORT_FOLDER_PATH, replace_slice.caseId, replace_slice)
     return True
 
-@app.post("/api/mask/save")
-async def save_mask(mask: model.Masks):
-    print("received:", len(mask.masks))
+
+@app.get("/api/mask/save")
+async def save_mask(name: str, background_tasks: BackgroundTasks):
+    # tools.save()
+    background_tasks.add_task(task_oi.json_to_nii)
     return True
+
+@app.get("/api/mask")
+async def get_mask(name: str = Query(None)):
+    if name is not None:
+        cwd = os.getcwd()
+        file_path = os.path.join(cwd, EXPORT_FOLDER_PATH, name, "mask.json")
+        cheked = tools.check_mask_json_file(EXPORT_FOLDER_PATH, name, "mask.json")
+        if (cheked):
+            with open(file_path, mode="rb") as file:
+                file_contents = file.read()
+            file_object = BytesIO(file_contents)
+            return StreamingResponse(file_object, media_type="application/json")
+        else:
+            return False
 
 
 if __name__ == '__main__':
