@@ -41,7 +41,7 @@ def convert_to_nii(folder):
         nii.SetSpacing(spacing)
         nii.SetOrigin(origin)
 
-        nii_path = os.path.join(folder, "output.nii")
+        nii_path = os.path.join(folder, "mask.nii")
         # Save the image as a NIfTI file
         sitk.WriteImage(nii, nii_path)
         print("convert successfully!")
