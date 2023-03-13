@@ -5,6 +5,9 @@ import time
 MASKS = None
 FILE_PATH = ""
 FOLDER_PATH = ""
+IMPORT_FOLDER_PATH = "import_nrrd"
+EXPORT_FOLDER_PATH = "export_data"
+CASE_NAMES = []
 
 
 def check_file_exist(directory, filename):
@@ -60,6 +63,15 @@ def check_mask_json_file(directory, subdirectory, filename):
             return False
         else:
             return True
+
+def find_frist_nrrd(folder):
+    file_list = os.listdir(folder)
+    nrrd_list = [filename for filename in file_list if filename.endswith(".nrrd")]
+    if len(nrrd_list)>0:
+        nrrd_path = os.path.join(folder,nrrd_list[0])
+        return nrrd_path
+    else:
+        return ""
 
 
 def write_data_to_json(directory, subdirectory, masks):
