@@ -10,3 +10,4 @@ class Mask(BaseModel):
     caseId: str
     sliceId: int
     mask: list
+

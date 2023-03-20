@@ -3,3 +3,6 @@ Pillow
 numpy
 SimpleITK
 pandas
+openpyxl
+pathlib
+python-dotenv
