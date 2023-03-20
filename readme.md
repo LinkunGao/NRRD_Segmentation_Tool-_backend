@@ -18,4 +18,5 @@ docker-compose up
 ```bash
 docker-compose down
 ```
-- paste your cases into ~/desktop/docker/import_nrrd folder.
+- paste your original dicom cases into ~/primary.
+- update your manifest.xlsx file.
