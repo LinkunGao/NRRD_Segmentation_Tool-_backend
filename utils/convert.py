@@ -2,13 +2,11 @@ import numpy as np
 import json
 import SimpleITK as sitk
 import os
-from .tools import find_frist_nrrd, IMPORT_FOLDER_PATH, EXPORT_FOLDER_PATH
+from .tools import get_file_path
 
-
-def convert_to_nii_sigel_channel(casename):
-    cwd = os.getcwd()
-    nii_image = convert_json_data(casename)
-    nii_path = os.path.join(cwd,EXPORT_FOLDER_PATH,casename, "mask.nii.gz")
+def convert_to_nii_sigel_channel(patient_id):
+    nii_image = convert_json_data(patient_id)
+    nii_path = get_file_path(patient_id, "nii")
     # Save the image as a NIfTI file
     sitk.WriteImage(nii_image, nii_path)
     print("convert successfully!")
@@ -21,12 +19,12 @@ def convert_to_nrrd_sigel_channel(folder):
     sitk.WriteImage(nrrd_image, nrrd_path)
     print("convert successfully!")
 
-def convert_json_data(casename):
+def convert_json_data(patient_id):
 
     print("start converting...")
 
-    nrrd_path = find_frist_nrrd(os.path.join(os.getcwd(),IMPORT_FOLDER_PATH,casename))
-    mask_path = os.path.join(os.path.join(os.getcwd(),EXPORT_FOLDER_PATH,casename), "mask.json")
+    nrrd_path = get_file_path(patient_id, "nrrd")
+    mask_path = get_file_path(patient_id, "json")
 
     nrrd_image = sitk.ReadImage(nrrd_path)
     headerKeys = nrrd_image.GetMetaDataKeys()
@@ -66,11 +64,10 @@ def convert_json_data(casename):
         import traceback
         print(traceback.format_exc())
 
-def convert_to_nii_full_channels(casename):
+def convert_to_nii_full_channels(patient_id):
 
     print("start converting...")
-    print(casename)
-    mask_path = os.path.join(os.getcwd(),EXPORT_FOLDER_PATH,casename, "mask.json")
+    mask_path = get_file_path(patient_id, "json")
 
     with open(mask_path) as user_file:
         file_contents = user_file.read()
@@ -103,7 +100,7 @@ def convert_to_nii_full_channels(casename):
         nii.SetSpacing(spacing)
         nii.SetOrigin(origin)
 
-        nii_path = os.path.join(os.path.join(os.getcwd(),EXPORT_FOLDER_PATH,casename), "mask.nii")
+        nii_path = get_file_path(patient_id, "nii")
         # Save the image as a NIfTI file
         sitk.WriteImage(nii, nii_path)
         print("convert successfully!")

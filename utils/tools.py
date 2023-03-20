@@ -1,140 +1,114 @@
-import os
 import json
 import time
-
-MASKS = None
-FILE_PATH = ""
-FOLDER_PATH = ""
-IMPORT_FOLDER_PATH = "import_nrrd"
-EXPORT_FOLDER_PATH = "export_data"
-CASE_NAMES = []
+import pandas as pd
+from .setup import Config
 
 
-def check_file_exist(directory, filename):
-    cwd = os.getcwd()
-    filepath = os.path.join(cwd, 'import_nrrd', directory, filename)
-    if os.path.exists(filepath):
-        return True
-    else:
-        return False
+def get_metadata():
+    """
+    :return: df format metadata
+    """
+    metadata_path = Config.BASE_PATH / Config.METADATA_PATH
+    if metadata_path.is_file() and metadata_path.suffix == ".xlsx":
+        Config.METADATA = pd.read_excel(metadata_path, sheet_name="Sheet1")
 
 
-# not use
-def get_real_path(directory, subdirectory, filename):
-    cwd = os.getcwd()
-    filepath = os.path.join(cwd, directory, subdirectory, filename)
-    if os.path.exists(filepath):
-        return filepath
-    else:
-        return ''
+def get_all_case_names():
+    """
+    :return: get each case name, the patient id for user to switch cases
+    """
+    if Config.METADATA is not None:
+        case_names = list(set(Config.METADATA["patient_id"]))
+        Config.CASE_NAMES = case_names
+        return case_names
+    return []
 
 
-def get_all_folder_names(directory, subdirectory=""):
-    cwd = os.getcwd()
-    folder_path = os.path.join(cwd, directory, subdirectory)
-    folder_names = [name for name in os.listdir(folder_path) if os.path.isdir(os.path.join(folder_path, name))]
-    return folder_names
-
-
-def get_all_file_names(directory, subdirectory=""):
-    cwd = os.getcwd()
-    folder_path = os.path.join(cwd, directory, subdirectory)
-    items = os.listdir(folder_path)
-    for item in items:
-        if ('.nrrd' not in item) and ('.json' not in item):
-            items.remove(item)
-
-    file_names = [item for item in items if os.path.isfile(os.path.join(folder_path, item))]
-    sorted_files_names = sorted(file_names)
-    return sorted_files_names
-
-
-def check_mask_json_file(directory, subdirectory, filename):
-    cwd = os.getcwd()
-    folder_path = os.path.join(cwd, directory, subdirectory)
-    # check the folder is exist or not
-    if not os.path.exists(folder_path):
-        os.mkdir(folder_path)
-        return False
-    else:
-        # check the mask json file is exist or not
-        file_path = os.path.join(cwd, directory, subdirectory, filename)
-        if not os.path.exists(file_path):
-            return False
+def check_mask_json_file(patient_id, filename):
+    """
+    :param patient_id: case name
+    :param filename: mask.json
+    :return: if there is a mask.json file return true, else create a mask.json and return false
+    """
+    mask_json_path = get_file_path(patient_id, "json")
+    if mask_json_path is not "":
+        # Create the directory and all parent directories if they don't exist
+        mask_json_path.parent.mkdir(parents=True, exist_ok=True)
+        if mask_json_path.name != filename:
+            new_file_path = mask_json_path.parent / filename
+            new_file_path.touch()
         else:
-            return True
-
-def find_frist_nrrd(folder):
-    file_list = os.listdir(folder)
-    nrrd_list = [filename for filename in file_list if filename.endswith(".nrrd")]
-    if len(nrrd_list)>0:
-        nrrd_path = os.path.join(folder,nrrd_list[0])
-        return nrrd_path
-    else:
-        return ""
+            if mask_json_path.exists():
+                return True
+            else:
+                mask_json_path.touch()
+    return False
 
 
-def write_data_to_json(directory, subdirectory, masks):
-    global MASKS
-    global FILE_PATH
-    global FOLDER_PATH
-    start_time = time.time()
-    cwd = os.getcwd()
-    FOLDER_PATH = os.path.join(cwd, directory, subdirectory)
-    file_path = os.path.join(FOLDER_PATH,"mask.json")
-    # for mask in masks:
-    #     base = mask["width"]*mask["height"]*4
-    #     mask["data"] = [0] * base
-    # with open(file_path, "w") as file:
-    #     json.dump(masks, file)
-    FILE_PATH = file_path
-    MASKS = masks
+def write_data_to_json(patient_id, masks):
+    # todo 1: find mask.json path base on patient_id
+    mask_json_path = get_file_path(patient_id, "json")
+    Config.MASK_FOLDER_PATH = mask_json_path.parent
+    Config.MASK_FILE_PATH = mask_json_path
+    Config.MASKS = masks
     saveMaskData()
-    end_time = time.time()
-    run_time = end_time - start_time
-    # print("代码运行时间为：{:.2f}秒".format(run_time))
 
 
-def replace_data_to_json(directory, subdirectory, slice):
-    cwd = os.getcwd()
-    file_path = os.path.join(cwd, directory, subdirectory, "mask.json")
+def get_file_path(patient_id, file_type):
+    """
+    :param patient_id: case name
+    :param file_type: json, nrrd, nii
+    :return: file full path via pathlib
+    """
+    if Config.METADATA is not None:
+        file_df = Config.METADATA[
+            (Config.METADATA["patient_id"] == patient_id) & (Config.METADATA["file type"] == file_type)]
+        # index = mask_json_df.index.tolist()
+        # path = mask_json_df.loc[index[0], 'filename']
+        file_path = list(file_df['filename'])[0]
+        file_path_full = Config.BASE_PATH / file_path
+        return file_path_full
+    return ""
+
+def replace_data_to_json(patient_id, slice):
+    """
+    :param patient_id: case name
+    :param slice: a single slice mask pixels
+    """
+    mask_json_path = get_file_path(patient_id, "json")
     index = slice.sliceId
-    if os.path.isfile(file_path):
-        # Open the JSON file in read mode
-        # with open(file_path, 'r') as f:
-        #     # Load the JSON data from the file into a Python object
-        #     masks = json.load(f)
-        masks = getMaskData(file_path)
+    if mask_json_path.is_file():
+        masks = getMaskData(mask_json_path)
         masks[index]["data"] = slice.mask
-        # with open(file_path, "w") as file:
-        #     json.dump(masks, file)
 
 
 def getMaskData(path):
-    global MASKS
-    global FILE_PATH
-    FILE_PATH = path
-    if MASKS is None:
+    """
+    :param path: A mask.json file full path
+    :return:
+    """
+    Config.MASK_FILE_PATH = path
+    if Config.MASKS is None:
         with open(path, 'rb') as file:
             # Load the JSON data from the file into a Python object
-            # MASKS = json.load(file)
-            MASKS = json.loads(file.read().decode('utf-8'))
-    return MASKS
+            Config.MASKS = json.loads(file.read().decode('utf-8'))
+    return Config.MASKS
 
 
 def saveMaskData():
-    global MASKS
-    global FILE_PATH
-    with open(FILE_PATH, "wb") as file:
-        # json.dump(MASKS, file)
-        file.write(json.dumps(MASKS).encode('utf-8'))
-    MASKS = None
+    """
+    save mask.json to local drive
+    """
+    if Config.MASK_FILE_PATH != "":
+        with open(Config.MASK_FILE_PATH, "wb") as file:
+            # json.dump(MASKS, file)
+            file.write(json.dumps(Config.MASKS).encode('utf-8'))
+        Config.MASKS = None
+
 
 def save():
-    global MASKS
-
     start_time = time.time()
-    if MASKS is not None:
+    if Config.MASKS is not None:
         saveMaskData()
     end_time = time.time()
     run_time = end_time - start_time
