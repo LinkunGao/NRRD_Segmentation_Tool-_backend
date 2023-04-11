@@ -1,20 +1,20 @@
 import numpy as np
 import json
 import SimpleITK as sitk
-import os
+import nrrd
 from .tools import get_file_path
 
 def convert_to_nii_sigel_channel(patient_id):
     nii_image = convert_json_data(patient_id)
-    nii_path = get_file_path(patient_id, "nii")
+    nii_path = get_file_path(patient_id, "nii.gz","mask.nii.gz")
     # Save the image as a NIfTI file
     sitk.WriteImage(nii_image, nii_path)
     print("convert successfully!")
 
 
-def convert_to_nrrd_sigel_channel(folder):
-    nrrd_image = convert_json_data(folder)
-    nrrd_path = os.path.join(folder, "mask.nrrd")
+def convert_to_nrrd_sigel_channel(patient_id):
+    nrrd_image = convert_json_data(patient_id)
+    nrrd_path = get_file_path(patient_id, "nrrd", "mask.nrrd")
     # Save the image as a NRRD file
     sitk.WriteImage(nrrd_image, nrrd_path)
     print("convert successfully!")
@@ -23,8 +23,8 @@ def convert_json_data(patient_id):
 
     print("start converting...")
 
-    nrrd_path = get_file_path(patient_id, "nrrd")
-    mask_path = get_file_path(patient_id, "json")
+    nrrd_path = get_file_path(patient_id, "nrrd","contrast_0.nrrd")
+    mask_path = get_file_path(patient_id, "json","mask.json")
 
     nrrd_image = sitk.ReadImage(nrrd_path)
     headerKeys = nrrd_image.GetMetaDataKeys()
@@ -43,20 +43,25 @@ def convert_json_data(patient_id):
         images.append(data)
 
     try:
-        pixels = np.array(images).reshape((depth, height, width, 4))
+        pixels = np.array(images, dtype=np.uint8).reshape((depth, height, width, 4))
 
         # Take the average of the RGB values and use the Alpha value as the transparency
-        merged_pixels = np.mean(pixels[:, :, :, :3], axis=3)
+        # merged_pixels = np.mean(pixels[:, :, :, :3], axis=3)
+        merged_pixels = pixels[:,:,:,0] + pixels[:,:,:,1] + pixels[:,:,:,2] + pixels[:,:,:,3]
+        merged_pixels[merged_pixels > 0] = 255
 
         new_image = sitk.GetImageFromArray(merged_pixels)
 
+        new_image.CopyInformation(nrrd_image)
         spacing = parsed_json[0]["voxelSpacing"]
         origin = parsed_json[0]["spaceOrigin"]
         new_image.SetSpacing(spacing)
         new_image.SetOrigin(origin)
+        #
+        # for key in headerKeys:
+        #     new_image.SetMetaData(key, nrrd_image.GetMetaData(key))
 
-        for key in headerKeys:
-            new_image.SetMetaData(key, nrrd_image.GetMetaData(key))
+
         return new_image
 
     except Exception as e:
@@ -67,7 +72,7 @@ def convert_json_data(patient_id):
 def convert_to_nii_full_channels(patient_id):
 
     print("start converting...")
-    mask_path = get_file_path(patient_id, "json")
+    mask_path = get_file_path(patient_id, "json","mask.json")
 
     with open(mask_path) as user_file:
         file_contents = user_file.read()
@@ -100,7 +105,7 @@ def convert_to_nii_full_channels(patient_id):
         nii.SetSpacing(spacing)
         nii.SetOrigin(origin)
 
-        nii_path = get_file_path(patient_id, "nii")
+        nii_path = get_file_path(patient_id, "nii.gz","mask.nii.gz")
         # Save the image as a NIfTI file
         sitk.WriteImage(nii, nii_path)
         print("convert successfully!")

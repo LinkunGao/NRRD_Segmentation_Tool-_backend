@@ -9,6 +9,7 @@ def get_metadata():
     :return: df format metadata
     """
     metadata_path = Config.BASE_PATH / Config.METADATA_PATH
+    print(metadata_path)
     if metadata_path.is_file() and metadata_path.suffix == ".xlsx":
         Config.METADATA = pd.read_excel(metadata_path, sheet_name="Sheet1")
 
@@ -30,7 +31,7 @@ def check_mask_json_file(patient_id, filename):
     :param filename: mask.json
     :return: if there is a mask.json file return true, else create a mask.json and return false
     """
-    mask_json_path = get_file_path(patient_id, "json")
+    mask_json_path = get_file_path(patient_id, "json", "mask.json")
     if mask_json_path is not "":
         # Create the directory and all parent directories if they don't exist
         mask_json_path.parent.mkdir(parents=True, exist_ok=True)
@@ -47,14 +48,14 @@ def check_mask_json_file(patient_id, filename):
 
 def write_data_to_json(patient_id, masks):
     # todo 1: find mask.json path base on patient_id
-    mask_json_path = get_file_path(patient_id, "json")
+    mask_json_path = get_file_path(patient_id, "json", "mask.json")
     Config.MASK_FOLDER_PATH = mask_json_path.parent
     Config.MASK_FILE_PATH = mask_json_path
     Config.MASKS = masks
     saveMaskData()
 
 
-def get_file_path(patient_id, file_type):
+def get_file_path(patient_id, file_type, file_name):
     """
     :param patient_id: case name
     :param file_type: json, nrrd, nii
@@ -65,8 +66,12 @@ def get_file_path(patient_id, file_type):
             (Config.METADATA["patient_id"] == patient_id) & (Config.METADATA["file type"] == file_type)]
         # index = mask_json_df.index.tolist()
         # path = mask_json_df.loc[index[0], 'filename']
-        file_path = list(file_df['filename'])[0]
-        file_path_full = Config.BASE_PATH / file_path
+        paths = list(file_df['filename'])
+        new_paths = []
+        for path in paths:
+            new_paths.append(Config.BASE_PATH / path)
+        file_path_arr = [path for path in new_paths if path.name==file_name]
+        file_path_full = file_path_arr[0]
         return file_path_full
     return ""
 
@@ -75,7 +80,7 @@ def replace_data_to_json(patient_id, slice):
     :param patient_id: case name
     :param slice: a single slice mask pixels
     """
-    mask_json_path = get_file_path(patient_id, "json")
+    mask_json_path = get_file_path(patient_id, "json","mask.json")
     index = slice.sliceId
     if mask_json_path.is_file():
         masks = getMaskData(mask_json_path)
