@@ -63,6 +63,9 @@ async def send_nrrd_case(name: str = Query(None)):
         # TODO 1: get all nrrd file paths
         nrrds_df = Config.METADATA[(Config.METADATA["file type"] == "nrrd") & (Config.METADATA["patient_id"] == name)]
         file_paths.extend(list(nrrds_df["filename"]))
+        for file_path in file_paths:
+            if "mask.nrrd" in file_path:
+                file_paths.remove(file_path)
         # TODO 2: get mask.json file path
         json_df = Config.METADATA[(Config.METADATA["file type"] == "json") & (Config.METADATA["patient_id"] == name)]
         file_paths.extend(list(json_df["filename"]))
@@ -80,6 +83,7 @@ async def send_nrrd_case(name: str = Query(None)):
 
 @app.post("/api/mask/init")
 async def init_mask(mask: model.Masks):
+    print(mask.masks)
     tools.write_data_to_json(mask.caseId, mask.masks)
     return True
 
@@ -99,7 +103,7 @@ async def save_mask(name: str, background_tasks: BackgroundTasks):
 @app.get("/api/mask")
 async def get_mask(name: str = Query(None)):
     if name is not None:
-        mask_json_path = tools.get_file_path(name, "json")
+        mask_json_path = tools.get_file_path(name, "json", "mask.json")
         cheked = tools.check_mask_json_file(name, "mask.json")
         if (cheked):
             with open(mask_json_path, mode="rb") as file:
@@ -109,6 +113,12 @@ async def get_mask(name: str = Query(None)):
         else:
             return False
 
-
+@app.get("/api/display")
+async def get_display_mask_nrrd(name: str = Query(None)):
+    mask_nrrd_path = tools.get_file_path(name, "nrrd", "contrast_1.nrrd")
+    if mask_nrrd_path.exists():
+        return FileResponse(mask_nrrd_path, media_type="application/octet-stream", filename="mask.nrrd")
+    else:
+        return False
 if __name__ == '__main__':
     uvicorn.run(app)

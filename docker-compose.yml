@@ -7,10 +7,15 @@ services:
     ports:
       - "8000:8000"
 #    volumes:
-#      - ~/desktop/docker/import_nrrd:/segmentation_gui_backend/import_nrrd
-#      - ~/desktop/docker/export_data:/segmentation_gui_backend/export_data
+#      - Y:/projects/clinical_adhb/data_new_structure/derivative:/tumour_gui_backend/workdir
+#    volumes:ls
+#      - ~/desktop/docker/import_nrrd:/tumour_gui_backend/import_nrrd
+#      - ~/desktop/docker/export_data:/tumour_gui_backend/export_data
     volumes:
          - type: bind
            source: I:\workdir
-           target: /segmentation_gui_backend/workdir
-
+           target: /tumour_gui_backend/workdir
+#    volumes:
+#         - type: bind
+#           source: Y:/projects/clinical_adhb/data_new_structure/derivative
+#           target: /tumour_gui_backend/workdir
