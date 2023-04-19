@@ -3,11 +3,12 @@ from pydantic import BaseModel
 
 class Masks(BaseModel):
     caseId: str
-    masks: list
+    masks: object
 
 
 class Mask(BaseModel):
     caseId: str
     sliceId: int
+    label: str
     mask: list
 

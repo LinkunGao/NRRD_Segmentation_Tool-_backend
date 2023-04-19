@@ -1,8 +1,14 @@
-from utils import convert_to_nii_sigel_channel, tools,convert
+from utils import convert_to_nii_sigel_channel, tools,convert, Config
+import io
 
 def json_to_nii(casename):
     tools.save()
     # Performing time-consuming calculation tasks
-    convert_to_nii_sigel_channel(casename)
-    convert.convert_to_nrrd_sigel_channel(casename)
+    # convert_to_nii_sigel_channel(casename)
+    # convert.convert_to_nrrd_sigel_channel(casename)
     # convert.convert_to_nii_full_channels(casename)
+    convert.convert_to_nii(casename)
+    convert.convert_to_obj(casename)
+    print("finish covert nii and mesh.")
+
+

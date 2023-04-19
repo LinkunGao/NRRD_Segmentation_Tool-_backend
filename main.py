@@ -2,7 +2,7 @@
 # terminial-> venv/Scripts/activate.bat
 import uvicorn
 import time
-from fastapi import FastAPI, Query, BackgroundTasks
+from fastapi import FastAPI, Query, BackgroundTasks, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse
 from zipfile import ZipFile
@@ -10,7 +10,7 @@ from utils import tools, Config
 from models import model
 from io import BytesIO
 from task import task_oi
-
+import asyncio
 
 app = FastAPI()
 
@@ -38,6 +38,29 @@ app.add_middleware(
 async def root():
     return "Welcome to segmentation backend"
 
+@app.websocket('/ws')
+async def websocket_endpoint(websocket:WebSocket):
+    await websocket.accept()
+    #send a JSON object over the WebSocket connection
+    Config.Connected_Websocket = websocket
+    try:
+        while True:
+            message = await websocket.receive_text()
+            if Config.Updated_Mesh:
+                await send_obj_to_frontend(Config.Current_Case_Name)
+                Config.Updated_Mesh = False
+    except:
+        Config.Connected_Websocket = None
+
+async def send_obj_to_frontend(patient_id):
+    obj_path = tools.get_file_path(patient_id, "obj", "mask.obj")
+    if obj_path.exists():
+        with open(obj_path, "rb") as file:
+            file_data = file.read()
+        if Config.Connected_Websocket != None:
+            await Config.Connected_Websocket.send_bytes(file_data)
+            print("send to frontend")
+
 
 @app.get('/api/cases')
 async def get_cases_name(background_tasks: BackgroundTasks):
@@ -50,8 +73,9 @@ async def get_cases_name(background_tasks: BackgroundTasks):
     res["names"] = case_names
     res["details"] = []
     for name in case_names:
-        is_exist = tools.check_mask_json_file(name, "mask.json")
-        res["details"].append({"name": name, "masked": is_exist})
+        json_is_exist = tools.check_file_exist(name, "json", "mask.json")
+        obj_is_exist = tools.check_file_exist(name, "obj", "mask.obj")
+        res["details"].append({"name": name, "masked": json_is_exist, "has_mesh":obj_is_exist})
     return res
 
 
@@ -75,6 +99,7 @@ async def send_nrrd_case(name: str = Query(None)):
         with ZipFile('nrrd_files.zip', 'w') as zip_file:
             for file_path in file_paths:
                 zip_file.write(file_path)
+        Config.Current_Case_Name = name
     end_time = time.time()
     run_time = end_time - start_time
     print("get files cost：{:.2f}s".format(run_time))
@@ -83,7 +108,6 @@ async def send_nrrd_case(name: str = Query(None)):
 
 @app.post("/api/mask/init")
 async def init_mask(mask: model.Masks):
-    print(mask.masks)
     tools.write_data_to_json(mask.caseId, mask.masks)
     return True
 
@@ -94,17 +118,23 @@ async def replace_mask(replace_slice: model.Mask):
     return True
 
 
+async def on_complete():
+    print("conplete")
+    Config.Updated_Mesh = True
+
 @app.get("/api/mask/save")
 async def save_mask(name: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(task_oi.json_to_nii, name)
+    background_tasks.add_task(on_complete)
     return True
 
 
 @app.get("/api/mask")
 async def get_mask(name: str = Query(None)):
     if name is not None:
+        Config.Current_Case_Name = name
         mask_json_path = tools.get_file_path(name, "json", "mask.json")
-        cheked = tools.check_mask_json_file(name, "mask.json")
+        cheked = tools.check_file_exist(name, "json", "mask.json")
         if (cheked):
             with open(mask_json_path, mode="rb") as file:
                 file_contents = file.read()
@@ -120,5 +150,15 @@ async def get_display_mask_nrrd(name: str = Query(None)):
         return FileResponse(mask_nrrd_path, media_type="application/octet-stream", filename="mask.nrrd")
     else:
         return False
+
+@app.get("/api/mesh")
+async def get_display_mask_nrrd(name: str = Query(None)):
+    mask_nrrd_path = tools.get_file_path(name, "obj", "mask.obj")
+    if mask_nrrd_path.exists():
+        return FileResponse(mask_nrrd_path, media_type="application/octet-stream", filename="mask.obj")
+    else:
+        return False
 if __name__ == '__main__':
+
     uvicorn.run(app)
+

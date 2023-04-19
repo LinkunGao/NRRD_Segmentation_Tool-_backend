@@ -11,6 +11,9 @@ def get_base_from_env():
 class Config:
     MASKS = None
     METADATA = None
+    Connected_Websocket = None
+    Updated_Mesh = False
+    Current_Case_Name = ""
     BASE_PATH = Path(get_base_from_env())
     METADATA_PATH = "./manifest.xlsx"
     MASK_FILE_PATH = ""

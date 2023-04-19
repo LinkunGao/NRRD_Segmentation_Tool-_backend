@@ -9,7 +9,6 @@ def get_metadata():
     :return: df format metadata
     """
     metadata_path = Config.BASE_PATH / Config.METADATA_PATH
-    print(metadata_path)
     if metadata_path.is_file() and metadata_path.suffix == ".xlsx":
         Config.METADATA = pd.read_excel(metadata_path, sheet_name="Sheet1")
 
@@ -25,24 +24,27 @@ def get_all_case_names():
     return []
 
 
-def check_mask_json_file(patient_id, filename):
+def check_file_exist(patient_id, filetype, filename):
     """
     :param patient_id: case name
-    :param filename: mask.json
+    :param filename: mask.json mask.obj
     :return: if there is a mask.json file return true, else create a mask.json and return false
     """
-    mask_json_path = get_file_path(patient_id, "json", "mask.json")
-    if mask_json_path is not "":
-        # Create the directory and all parent directories if they don't exist
-        mask_json_path.parent.mkdir(parents=True, exist_ok=True)
-        if mask_json_path.name != filename:
-            new_file_path = mask_json_path.parent / filename
-            new_file_path.touch()
-        else:
-            if mask_json_path.exists():
-                return True
+    file_path = get_file_path(patient_id, filetype, filename)
+    if file_path != "":
+        if filetype == "json":
+            # Create the directory and all parent directories if they don't exist
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            if file_path.name != filename:
+                new_file_path = file_path.parent / filename
+                new_file_path.touch()
             else:
-                mask_json_path.touch()
+                if file_path.exists():
+                    return True
+                else:
+                    file_path.touch()
+        else:
+            return file_path.exists()
     return False
 
 
@@ -71,8 +73,9 @@ def get_file_path(patient_id, file_type, file_name):
         for path in paths:
             new_paths.append(Config.BASE_PATH / path)
         file_path_arr = [path for path in new_paths if path.name==file_name]
-        file_path_full = file_path_arr[0]
-        return file_path_full
+        if len(file_path_arr) >0:
+            file_path_full = file_path_arr[0]
+            return file_path_full
     return ""
 
 def replace_data_to_json(patient_id, slice):
@@ -82,9 +85,10 @@ def replace_data_to_json(patient_id, slice):
     """
     mask_json_path = get_file_path(patient_id, "json","mask.json")
     index = slice.sliceId
+    label = slice.label
     if mask_json_path.is_file():
         masks = getMaskData(mask_json_path)
-        masks[index]["data"] = slice.mask
+        masks[label][index]["data"] = slice.mask
 
 
 def getMaskData(path):
