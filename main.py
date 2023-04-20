@@ -158,7 +158,16 @@ async def get_display_mask_nrrd(name: str = Query(None)):
     else:
         return False
 
-
+@app.get("/api/clearmesh")
+async def clear_mesh(name: str = Query(None)):
+    mesh_obj_path = tools.get_file_path(name, "obj", "mask.obj")
+    if mesh_obj_path.exists():
+        try:
+            mesh_obj_path.unlink()
+            print(f"{mesh_obj_path.name} file delete successfully!")
+        except OSError as e:
+            print(f"fail to delete file!")
+    return "success"
 
 if __name__ == '__main__':
 
