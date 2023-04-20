@@ -11,4 +11,6 @@ def json_to_nii(casename):
     convert.convert_to_obj(casename)
     print("finish covert nii and mesh.")
 
-
+async def on_complete():
+    print("conplete")
+    Config.Updated_Mesh = True
