@@ -4,7 +4,6 @@ import SimpleITK as sitk
 from skimage.measure import marching_cubes
 import nibabel as nib
 from .tools import get_file_path
-from utils import Config
 
 
 def convert_to_obj(patient_id):
@@ -19,26 +18,33 @@ def convert_to_obj(patient_id):
     img = nib.load(source)
     spacing = img.header.get_zooms()
     arr = img.get_fdata()
-    verts, faces, normals, values = marching_cubes(arr)
-    # voxel grid coordinates to world coordinates: verts * voxel_size + origin
-    verts = verts * spacing + img.affine[0:3, -1]
-    # without spacing
-    # verts = verts + img.affine[0:3, -1]
+    try:
+        verts, faces, normals, values = marching_cubes(arr)
+        # voxel grid coordinates to world coordinates: verts * voxel_size + origin
+        verts = verts * spacing + img.affine[0:3, -1]
+        # without spacing
+        # verts = verts + img.affine[0:3, -1]
 
-    faces = faces + 1
+        faces = faces + 1
 
-    for idx, normal in enumerate(normals):
-        normal = [-n for n in normal]
-        normals[idx] = normal
+        for idx, normal in enumerate(normals):
+            normal = [-n for n in normal]
+            normals[idx] = normal
 
-    with open(dest, 'w') as out_file:
-        for item in verts:
-            out_file.write("v {0} {1} {2}\n".format(item[0], item[1], item[2]))
-        for item in normals:
-            out_file.write("vn {0} {1} {2}\n".format(item[0], item[1], item[2]))
-        for item in faces:
-            out_file.write("f {0}//{0} {1}//{1} {2}//{2}\n".format(item[0], item[1], item[2]))
-    out_file.close()
+        with open(dest, 'w') as out_file:
+            for item in verts:
+                out_file.write("v {0} {1} {2}\n".format(item[0], item[1], item[2]))
+            for item in normals:
+                out_file.write("vn {0} {1} {2}\n".format(item[0], item[1], item[2]))
+            for item in faces:
+                out_file.write("f {0}//{0} {1}//{1} {2}//{2}\n".format(item[0], item[1], item[2]))
+        out_file.close()
+    except RuntimeError as e:
+        try:
+            dest.unlink()
+            print(f"{dest.name} file delete successfully!")
+        except OSError as e:
+            print(f"fail to delete file!")
 
 def convert_to_nii(patient_id):
     """
@@ -70,7 +76,7 @@ def convert_to_nii(patient_id):
         pixels = np.array(images, dtype=np.uint8).reshape((depth, height, width, 4))
         # Take the average of the RGB values and use the Alpha value as the transparency
         merged_pixels = np.mean(pixels[:, :, :, :3], axis=3)
-        print(np.amax(merged_pixels))
+        # print(np.amax(merged_pixels))
         merged_pixels[merged_pixels > 50] = 255
 
         nii_image = sitk.GetImageFromArray(merged_pixels)

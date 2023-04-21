@@ -59,7 +59,11 @@ async def send_obj_to_frontend(patient_id):
             file_data = file.read()
         if Config.Connected_Websocket != None:
             await Config.Connected_Websocket.send_bytes(file_data)
-            print("send to frontend")
+            print("send mesh to frontend!")
+    else:
+        if Config.Connected_Websocket != None:
+            await Config.Connected_Websocket.send_text("delete")
+            print("send to frontend, delete mesh!")
 
 
 @app.get('/api/cases')
@@ -117,15 +121,10 @@ async def replace_mask(replace_slice: model.Mask):
     tools.replace_data_to_json(replace_slice.caseId, replace_slice)
     return True
 
-
-async def on_complete():
-    print("conplete")
-    Config.Updated_Mesh = True
-
 @app.get("/api/mask/save")
 async def save_mask(name: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(task_oi.json_to_nii, name)
-    background_tasks.add_task(on_complete)
+    background_tasks.add_task(task_oi.on_complete)
     return True
 
 
@@ -158,6 +157,18 @@ async def get_display_mask_nrrd(name: str = Query(None)):
         return FileResponse(mask_nrrd_path, media_type="application/octet-stream", filename="mask.obj")
     else:
         return False
+
+@app.get("/api/clearmesh")
+async def clear_mesh(name: str = Query(None)):
+    mesh_obj_path = tools.get_file_path(name, "obj", "mask.obj")
+    if mesh_obj_path.exists():
+        try:
+            mesh_obj_path.unlink()
+            print(f"{mesh_obj_path.name} file delete successfully!")
+        except OSError as e:
+            print(f"fail to delete file!")
+    return "success"
+
 if __name__ == '__main__':
 
     uvicorn.run(app)
