@@ -83,12 +83,16 @@ def replace_data_to_json(patient_id, slice):
     :param patient_id: case name
     :param slice: a single slice mask pixels
     """
-    mask_json_path = get_file_path(patient_id, "json","mask.json")
+    mask_json_path = get_file_path(patient_id, "json", "mask.json")
     index = slice.sliceId
     label = slice.label
-    if mask_json_path.is_file():
-        masks = getMaskData(mask_json_path)
-        masks[label][index]["data"] = slice.mask
+    if Config.MASKS == None:
+        if mask_json_path.is_file():
+            getMaskData(mask_json_path)
+
+    Config.MASKS[label][index]["data"] = slice.mask
+    Config.MASKS["hasData"] = True
+
 
 
 def getMaskData(path):

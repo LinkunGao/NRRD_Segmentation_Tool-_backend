@@ -72,7 +72,6 @@ async def get_cases_name(background_tasks: BackgroundTasks):
     tools.get_metadata()
     case_names = tools.get_all_case_names()
     case_names.sort()
-
     res = {}
     res["names"] = case_names
     res["details"] = []
@@ -112,12 +111,14 @@ async def send_nrrd_case(name: str = Query(None)):
 
 @app.post("/api/mask/init")
 async def init_mask(mask: model.Masks):
+    Config.MASKS = None
     tools.write_data_to_json(mask.caseId, mask.masks)
     return True
 
 
 @app.post("/api/mask/replace")
 async def replace_mask(replace_slice: model.Mask):
+    Config.ClearAllMask = False
     tools.replace_data_to_json(replace_slice.caseId, replace_slice)
     return True
 
@@ -160,6 +161,7 @@ async def get_display_mask_nrrd(name: str = Query(None)):
 
 @app.get("/api/clearmesh")
 async def clear_mesh(name: str = Query(None)):
+    Config.ClearAllMask = True
     mesh_obj_path = tools.get_file_path(name, "obj", "mask.obj")
     if mesh_obj_path.exists():
         try:

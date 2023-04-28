@@ -13,6 +13,7 @@ class Config:
     METADATA = None
     Connected_Websocket = None
     Updated_Mesh = False
+    ClearAllMask = False
     Current_Case_Name = ""
     BASE_PATH = Path(get_base_from_env())
     METADATA_PATH = "./manifest.xlsx"
