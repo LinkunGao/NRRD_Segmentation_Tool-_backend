@@ -4,7 +4,7 @@ import SimpleITK as sitk
 from skimage.measure import marching_cubes
 import nibabel as nib
 from .tools import get_file_path
-from .setup import Config
+from .setup import Config, TumourData
 
 def convert_json_to_obj(patient_id):
     """
@@ -15,8 +15,6 @@ def convert_json_to_obj(patient_id):
     json_source = get_file_path(patient_id, "json", "mask.json")
     dest = get_file_path(patient_id, "obj", "mask.obj")
 
-    print(Config.MASKS)
-
     if Config.MASKS == None:
         if Config.ClearAllMask:
             Config.Updated_Mesh = True
@@ -25,7 +23,7 @@ def convert_json_to_obj(patient_id):
             with open(json_source) as user_file:
                 file_contents = user_file.read()
                 parsed_json = json.loads(file_contents)
-
+                user_file.close()
             if parsed_json["hasData"] == False:
                 Config.Updated_Mesh = True
                 return
@@ -50,7 +48,9 @@ def convert_json_to_obj(patient_id):
     arr = np.transpose(merged_pixels, (2, 1, 0))
     spacing = parsed_json[0]["voxelSpacing"]
     origin = parsed_json[0]["spaceOrigin"]
-
+    count = np.count_nonzero(arr > 0)
+    TumourData.volume = count*spacing[0]*spacing[1]*spacing[2]
+    Config.MASKS['volume'] = TumourData.volume
     try:
         verts, faces, normals, values = marching_cubes(arr)
         # voxel grid coordinates to world coordinates: verts * voxel_size + origin
@@ -74,9 +74,12 @@ def convert_json_to_obj(patient_id):
         out_file.close()
         # tell websocket the mesh is ready send to frontend
         Config.Updated_Mesh = True
+
     except RuntimeError as e:
         try:
             dest.unlink()
+            TumourData.volume = 0
+            Config.Updated_Mesh = True
             print(f"{dest.name} file delete successfully!")
         except OSError as e:
             print(f"fail to delete file!")
