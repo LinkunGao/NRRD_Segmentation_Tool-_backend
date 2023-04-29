@@ -23,4 +23,10 @@ class Config:
     EXPORT_FOLDER_PATH = "export_data"
     CASE_NAMES = []
 
+class TumourData:
+    volume: 0
+    extent: 0
+    skin: 0
+    ribcage: 0
+    nipple: 0
 
