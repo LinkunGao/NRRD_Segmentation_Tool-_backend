@@ -1,12 +1,14 @@
 # 进入venv虚拟环境
 # terminial-> venv/Scripts/activate.bat
+import json
+
 import uvicorn
 import time
 from fastapi import FastAPI, Query, BackgroundTasks, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from zipfile import ZipFile
-from utils import tools, Config
+from utils import tools, Config, TumourData
 from models import model
 from io import BytesIO
 from task import task_oi
@@ -18,6 +20,8 @@ origins = [
     "http://127.0.0.1:5173",
 ]
 
+expose_headers = ["x-volume"]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -25,6 +29,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers = expose_headers
 )
 
 
@@ -36,6 +41,9 @@ app.add_middleware(
 
 @app.get('/')
 async def root():
+    # headers = {"X-Test":"test"}
+    # return FileResponse("./nrrd_files.zip", media_type="application/octet-stream", filename="mask.obj", headers=headers)
+    # # return JSONResponse( content={"da":"1515"}, headers=headers)
     return "Welcome to segmentation backend"
 
 @app.websocket('/ws')
@@ -59,6 +67,8 @@ async def send_obj_to_frontend(patient_id):
             file_data = file.read()
         if Config.Connected_Websocket != None:
             await Config.Connected_Websocket.send_bytes(file_data)
+            volume_json = {"volume": TumourData.volume}
+            await Config.Connected_Websocket.send_text(json.dumps(volume_json))
             print("send mesh to frontend!")
     else:
         if Config.Connected_Websocket != None:
@@ -78,7 +88,7 @@ async def get_cases_name(background_tasks: BackgroundTasks):
     for name in case_names:
         json_is_exist = tools.check_file_exist(name, "json", "mask.json")
         obj_is_exist = tools.check_file_exist(name, "obj", "mask.obj")
-        res["details"].append({"name": name, "masked": json_is_exist, "has_mesh":obj_is_exist})
+        res["details"].append({"name": name, "masked": json_is_exist, "has_mesh": obj_is_exist})
     return res
 
 
@@ -153,9 +163,18 @@ async def get_display_mask_nrrd(name: str = Query(None)):
 
 @app.get("/api/mesh")
 async def get_display_mask_nrrd(name: str = Query(None)):
-    mask_nrrd_path = tools.get_file_path(name, "obj", "mask.obj")
-    if mask_nrrd_path.exists():
-        return FileResponse(mask_nrrd_path, media_type="application/octet-stream", filename="mask.obj")
+    mask_mesh_path = tools.get_file_path(name, "obj", "mask.obj")
+    mask_json_path = tools.get_file_path(name, "json", "mask.json")
+    if mask_mesh_path.exists():
+        with open(mask_json_path) as user_file:
+            file_contents = user_file.read()
+            parsed_json = json.loads(file_contents)
+            volume = parsed_json["volume"]
+            user_file.close()
+        mesh_volume_str = json.dumps({"volume": volume})
+        headers = {"x-volume": mesh_volume_str}
+        file_res = FileResponse(mask_mesh_path, media_type="application/octet-stream", filename="mask.obj", headers=headers)
+        return file_res
     else:
         return False
 
