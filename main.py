@@ -119,8 +119,6 @@ async def send_nrrd_case(name: str = Query(None)):
     if name is not None:
         # TODO 1: get all nrrd file paths
         file_paths = tools.selectNrrdPaths(name, "nrrd", "registration")
-
-        print(file_paths)
         # TODO 2: add base url to these paths
         file_paths = [Config.BASE_PATH / nrrd_path for nrrd_path in file_paths]
         # TODO 3: zip nrrd and json files
