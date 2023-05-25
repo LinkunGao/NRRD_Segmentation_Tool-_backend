@@ -3,7 +3,7 @@ import json
 import SimpleITK as sitk
 from skimage.measure import marching_cubes
 import nibabel as nib
-from .tools import get_file_path
+from .tools import get_file_path, getMaskData
 from .setup import Config, TumourData
 
 def convert_json_to_obj(patient_id):
@@ -20,14 +20,15 @@ def convert_json_to_obj(patient_id):
             Config.Updated_Mesh = True
             return
         else:
-            with open(json_source) as user_file:
-                file_contents = user_file.read()
-                parsed_json = json.loads(file_contents)
-                user_file.close()
-            if parsed_json["hasData"] == False:
+            # with open(json_source) as user_file:
+            #     file_contents = user_file.read()
+            #     parsed_json = json.loads(file_contents)
+            #     user_file.close()
+            getMaskData(json_source)
+            if Config.MASKS["hasData"] == False:
                 Config.Updated_Mesh = True
                 return
-            parsed_json = parsed_json["label1"]
+            parsed_json = Config.MASKS["label1"]
     else:
         parsed_json = Config.MASKS["label1"]
 

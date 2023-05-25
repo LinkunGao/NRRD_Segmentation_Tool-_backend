@@ -12,7 +12,6 @@ from utils import tools, Config, TumourData
 from models import model
 from io import BytesIO
 from task import task_oi
-import asyncio
 
 app = FastAPI()
 
@@ -29,14 +28,13 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-    expose_headers = expose_headers
+    expose_headers=expose_headers
 )
 
 
 #
 # @app.on_event("startup")
 # async def startup_event():
-
 
 
 @app.get('/')
@@ -46,10 +44,11 @@ async def root():
     # # return JSONResponse( content={"da":"1515"}, headers=headers)
     return "Welcome to segmentation backend"
 
+
 @app.websocket('/ws')
-async def websocket_endpoint(websocket:WebSocket):
+async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
-    #send a JSON object over the WebSocket connection
+    # send a JSON object over the WebSocket connection
     Config.Connected_Websocket = websocket
     try:
         while True:
@@ -59,6 +58,7 @@ async def websocket_endpoint(websocket:WebSocket):
                 Config.Updated_Mesh = False
     except:
         Config.Connected_Websocket = None
+
 
 async def send_obj_to_frontend(patient_id):
     obj_path = tools.get_file_path(patient_id, "obj", "mask.obj")
@@ -95,19 +95,14 @@ async def get_cases_name(background_tasks: BackgroundTasks):
 @app.get('/api/case/')
 async def send_nrrd_case(name: str = Query(None)):
     start_time = time.time()
-    file_paths = []
     if name is not None:
         # TODO 1: get all nrrd file paths
-        nrrds_df = Config.METADATA[(Config.METADATA["file type"] == "nrrd") & (Config.METADATA["patient_id"] == name)]
-        file_paths.extend(list(nrrds_df["filename"]))
-        for file_path in file_paths:
-            if "mask.nrrd" in file_path:
-                file_paths.remove(file_path)
+        file_paths = tools.selectNrrdPaths(name, "nrrd", "origin")
         # TODO 2: get mask.json file path
         json_df = Config.METADATA[(Config.METADATA["file type"] == "json") & (Config.METADATA["patient_id"] == name)]
         file_paths.extend(list(json_df["filename"]))
         # TODO 3: add base url to these paths
-        file_paths = [Config.BASE_PATH / x for x in file_paths]
+        file_paths = [Config.BASE_PATH / nrrd_path for nrrd_path in file_paths]
         # TODO 4: zip nrrd and json files
         with ZipFile('nrrd_files.zip', 'w') as zip_file:
             for file_path in file_paths:
@@ -116,6 +111,21 @@ async def send_nrrd_case(name: str = Query(None)):
     end_time = time.time()
     run_time = end_time - start_time
     print("get files cost：{:.2f}s".format(run_time))
+    return FileResponse('nrrd_files.zip', media_type='application/zip')
+
+
+@app.get('/api/casereg/')
+async def send_nrrd_case(name: str = Query(None)):
+    if name is not None:
+        # TODO 1: get all nrrd file paths
+        file_paths = tools.selectNrrdPaths(name, "nrrd", "registration")
+        # TODO 2: add base url to these paths
+        file_paths = [Config.BASE_PATH / nrrd_path for nrrd_path in file_paths]
+        # TODO 3: zip nrrd and json files
+        with ZipFile('nrrd_files.zip', 'w') as zip_file:
+            for file_path in file_paths:
+                zip_file.write(file_path)
+        Config.Current_Case_Name = name
     return FileResponse('nrrd_files.zip', media_type='application/zip')
 
 
@@ -131,6 +141,7 @@ async def replace_mask(replace_slice: model.Mask):
     Config.ClearAllMask = False
     tools.replace_data_to_json(replace_slice.caseId, replace_slice)
     return True
+
 
 @app.get("/api/mask/save")
 async def save_mask(name: str, background_tasks: BackgroundTasks):
@@ -153,6 +164,7 @@ async def get_mask(name: str = Query(None)):
         else:
             return False
 
+
 @app.get("/api/display")
 async def get_display_mask_nrrd(name: str = Query(None)):
     mask_nrrd_path = tools.get_file_path(name, "nrrd", "contrast_1.nrrd")
@@ -160,6 +172,7 @@ async def get_display_mask_nrrd(name: str = Query(None)):
         return FileResponse(mask_nrrd_path, media_type="application/octet-stream", filename="mask.nrrd")
     else:
         return False
+
 
 @app.get("/api/mesh")
 async def get_display_mask_nrrd(name: str = Query(None)):
@@ -173,10 +186,12 @@ async def get_display_mask_nrrd(name: str = Query(None)):
             user_file.close()
         mesh_volume_str = json.dumps({"volume": volume})
         headers = {"x-volume": mesh_volume_str}
-        file_res = FileResponse(mask_mesh_path, media_type="application/octet-stream", filename="mask.obj", headers=headers)
+        file_res = FileResponse(mask_mesh_path, media_type="application/octet-stream", filename="mask.obj",
+                                headers=headers)
         return file_res
     else:
         return False
+
 
 @app.get("/api/clearmesh")
 async def clear_mesh(name: str = Query(None)):
@@ -190,7 +205,6 @@ async def clear_mesh(name: str = Query(None)):
             print(f"fail to delete file!")
     return "success"
 
+
 if __name__ == '__main__':
-
     uvicorn.run(app)
-

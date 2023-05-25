@@ -2,6 +2,7 @@ import json
 import time
 import pandas as pd
 from .setup import Config
+from pathlib import Path
 
 
 def get_metadata():
@@ -93,7 +94,21 @@ def replace_data_to_json(patient_id, slice):
     Config.MASKS[label][index]["data"] = slice.mask
     Config.MASKS["hasData"] = True
 
-
+def selectNrrdPaths(patient_id, file_type, limit):
+    """
+    :param patient_id: name
+    :param file_type: nrrd / nii / json
+    :param limit: file parent folder name
+    :return:
+    """
+    all_nrrd_paths = []
+    nrrds_df = Config.METADATA[(Config.METADATA["file type"] == file_type) & (Config.METADATA["patient_id"] == patient_id)]
+    all_nrrd_paths.extend(list(nrrds_df["filename"]))
+    selected_paths = []
+    for file_path in all_nrrd_paths:
+        if Path(file_path).parent.name == limit:
+            selected_paths.append(file_path)
+    return selected_paths
 
 def getMaskData(path):
     """
