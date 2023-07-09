@@ -51,11 +51,14 @@ def check_file_exist(patient_id, filetype, filename):
 
 def write_data_to_json(patient_id, masks):
     # todo 1: find mask.json path base on patient_id
-    mask_json_path = get_file_path(patient_id, "json", "mask.json")
-    Config.MASK_FOLDER_PATH = mask_json_path.parent
-    Config.MASK_FILE_PATH = mask_json_path
-    Config.MASKS = masks
-    saveMaskData()
+    try:
+        mask_json_path = get_file_path(patient_id, "json", "mask.json")
+        Config.MASK_FOLDER_PATH = mask_json_path.parent
+        Config.MASK_FILE_PATH = mask_json_path
+        Config.MASKS = masks
+        saveMaskData()
+    except :
+        print("File not found!")
 
 
 def get_file_path(patient_id, file_type, file_name):
@@ -90,7 +93,6 @@ def replace_data_to_json(patient_id, slice):
     if Config.MASKS == None:
         if mask_json_path.is_file():
             getMaskData(mask_json_path)
-
     Config.MASKS[label][index]["data"] = slice.mask
     Config.MASKS["hasData"] = True
 

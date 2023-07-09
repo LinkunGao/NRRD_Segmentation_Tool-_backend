@@ -81,6 +81,7 @@ async def get_cases_name(background_tasks: BackgroundTasks):
     background_tasks.add_task(tools.save)
     tools.get_metadata()
     case_names = tools.get_all_case_names()
+    print(case_names)
     case_names.sort()
     res = {}
     res["names"] = case_names
@@ -115,7 +116,12 @@ async def send_nrrd_case(name: str = Query(None)):
 
 
 @app.get('/api/casereg/')
-async def send_nrrd_case(name: str = Query(None)):
+async def send_nrrd_case(data:str):
+    data_Obj = json.loads(data)
+    name = data_Obj["name"]
+    radius = data_Obj["radius"]
+    origin = data_Obj["origin"]
+    print(radius, origin)
     if name is not None:
         # TODO 1: get all nrrd file paths
         file_paths = tools.selectNrrdPaths(name, "nrrd", "registration")
@@ -167,7 +173,7 @@ async def get_mask(name: str = Query(None)):
 
 @app.get("/api/display")
 async def get_display_mask_nrrd(name: str = Query(None)):
-    mask_nrrd_path = tools.get_file_path(name, "nrrd", "contrast_1.nrrd")
+    mask_nrrd_path = tools.get_file_path(name, "nrrd", "contrast_0.nrrd")
     if mask_nrrd_path.exists():
         return FileResponse(mask_nrrd_path, media_type="application/octet-stream", filename="mask.nrrd")
     else:
