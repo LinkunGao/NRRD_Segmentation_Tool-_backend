@@ -104,9 +104,11 @@ async def send_nrrd_case(name: str = Query(None)):
     return FileResponse('nrrd_files.zip', media_type='application/zip')
 
 
-@app.get('/api/caseorigin')
+@app.get('/api/caseorigin/')
 async def send_nrrd_case(name: str = Query(None)):
-    pass
+    if name is not None:
+        tools.zipNrrdFiles(name, "origin")
+    return FileResponse('nrrd_files.zip', media_type='application/zip')
 
 
 @app.get('/api/casereg/')
