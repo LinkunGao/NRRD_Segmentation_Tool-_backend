@@ -3,6 +3,7 @@ import time
 import pandas as pd
 from .setup import Config
 from pathlib import Path
+from zipfile import ZipFile
 
 
 def get_metadata():
@@ -124,6 +125,28 @@ def getMaskData(path):
             Config.MASKS = json.loads(file.read().decode('utf-8'))
     return Config.MASKS
 
+def zipNrrdFiles(name, caseType):
+    """
+    :param name: patientId | caseId
+    :param caseType: "origin" | "registration"
+    :return:
+    """
+    # TODO 1: get all nrrd file paths
+    file_paths = selectNrrdPaths(name, "nrrd", caseType)
+    valide_path = Config.BASE_PATH / file_paths[0]
+    if (valide_path.exists() is False) and (caseType == "registration"):
+        file_paths = selectNrrdPaths(name, "nrrd", "origin")
+    if caseType == "registration":
+        # TODO 2: get mask.json file path
+        json_df = Config.METADATA[(Config.METADATA["file type"] == "json") & (Config.METADATA["patient_id"] == name)]
+        file_paths.extend(list(json_df["filename"]))
+    # TODO 3: add base url to these paths
+    file_paths = [Config.BASE_PATH / nrrd_path for nrrd_path in file_paths]
+    # TODO 4: zip nrrd and json files
+    with ZipFile('nrrd_files.zip', 'w') as zip_file:
+        for file_path in file_paths:
+            zip_file.write(file_path)
+    Config.Current_Case_Name = name
 
 def saveMaskData():
     """
