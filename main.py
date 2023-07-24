@@ -97,21 +97,17 @@ async def get_cases_name(background_tasks: BackgroundTasks):
 async def send_nrrd_case(name: str = Query(None)):
     start_time = time.time()
     if name is not None:
-        # TODO 1: get all nrrd file paths
-        file_paths = tools.selectNrrdPaths(name, "nrrd", "origin")
-        # TODO 2: get mask.json file path
-        json_df = Config.METADATA[(Config.METADATA["file type"] == "json") & (Config.METADATA["patient_id"] == name)]
-        file_paths.extend(list(json_df["filename"]))
-        # TODO 3: add base url to these paths
-        file_paths = [Config.BASE_PATH / nrrd_path for nrrd_path in file_paths]
-        # TODO 4: zip nrrd and json files
-        with ZipFile('nrrd_files.zip', 'w') as zip_file:
-            for file_path in file_paths:
-                zip_file.write(file_path)
-        Config.Current_Case_Name = name
+       tools.zipNrrdFiles(name, "registration")
     end_time = time.time()
     run_time = end_time - start_time
     print("get files cost：{:.2f}s".format(run_time))
+    return FileResponse('nrrd_files.zip', media_type='application/zip')
+
+
+@app.get('/api/caseorigin/')
+async def send_nrrd_case(name: str = Query(None)):
+    if name is not None:
+        tools.zipNrrdFiles(name, "origin")
     return FileResponse('nrrd_files.zip', media_type='application/zip')
 
 
@@ -121,17 +117,17 @@ async def send_nrrd_case(data:str):
     name = data_Obj["name"]
     radius = data_Obj["radius"]
     origin = data_Obj["origin"]
-    print(radius, origin)
     if name is not None:
-        # TODO 1: get all nrrd file paths
-        file_paths = tools.selectNrrdPaths(name, "nrrd", "registration")
-        # TODO 2: add base url to these paths
-        file_paths = [Config.BASE_PATH / nrrd_path for nrrd_path in file_paths]
-        # TODO 3: zip nrrd and json files
-        with ZipFile('nrrd_files.zip', 'w') as zip_file:
-            for file_path in file_paths:
-                zip_file.write(file_path)
-        Config.Current_Case_Name = name
+        # # TODO 1: get all nrrd file paths
+        # file_paths = tools.selectNrrdPaths(name, "nrrd", "registration")
+        # # TODO 2: add base url to these paths
+        # file_paths = [Config.BASE_PATH / nrrd_path for nrrd_path in file_paths]
+        # # TODO 3: zip nrrd and json files
+        # with ZipFile('nrrd_files.zip', 'w') as zip_file:
+        #     for file_path in file_paths:
+        #         zip_file.write(file_path)
+        # Config.Current_Case_Name = name
+        tools.zipNrrdFiles(name, "registration")
     return FileResponse('nrrd_files.zip', media_type='application/zip')
 
 
