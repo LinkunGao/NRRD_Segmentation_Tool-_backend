@@ -4,6 +4,7 @@ import pandas as pd
 from .setup import Config
 from pathlib import Path
 from zipfile import ZipFile
+from io import BytesIO
 
 
 def get_metadata():
@@ -112,6 +113,15 @@ def selectNrrdPaths(patient_id, file_type, limit):
         if Path(file_path).parent.name == limit:
             selected_paths.append(file_path)
     return selected_paths
+
+def getReturnedJsonFormat(path):
+    """
+    :param path:
+    :return: returns BytesIO for response to frontend
+    """
+    with open(path, mode="rb") as file:
+        file_contents = file.read()
+    return BytesIO(file_contents)
 
 def getJsonData(path):
     """
