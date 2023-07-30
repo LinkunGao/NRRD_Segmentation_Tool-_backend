@@ -10,7 +10,6 @@ from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from zipfile import ZipFile
 from utils import tools, Config, TumourData
 from models import model
-from io import BytesIO
 from task import task_oi
 
 app = FastAPI()
@@ -43,6 +42,7 @@ async def root():
     # return FileResponse("./nrrd_files.zip", media_type="application/octet-stream", filename="mask.obj", headers=headers)
     # # return JSONResponse( content={"da":"1515"}, headers=headers)
     return "Welcome to segmentation backend"
+
 
 
 @app.websocket('/ws')
@@ -81,7 +81,6 @@ async def get_cases_name(background_tasks: BackgroundTasks):
     background_tasks.add_task(tools.save)
     tools.get_metadata()
     case_names = tools.get_all_case_names()
-    print(case_names)
     case_names.sort()
     res = {}
     res["names"] = case_names
@@ -89,7 +88,8 @@ async def get_cases_name(background_tasks: BackgroundTasks):
     for name in case_names:
         json_is_exist = tools.check_file_exist(name, "json", "mask.json")
         obj_is_exist = tools.check_file_exist(name, "obj", "mask.obj")
-        res["details"].append({"name": name, "masked": json_is_exist, "has_mesh": obj_is_exist})
+        reg_is_exist = tools.check_file_exist(name, "nrrd", "r0.nrrd")
+        res["details"].append({"name": name, "masked": json_is_exist, "has_mesh": obj_is_exist, "registered":reg_is_exist})
     return res
 
 
@@ -97,6 +97,7 @@ async def get_cases_name(background_tasks: BackgroundTasks):
 async def send_nrrd_case(name: str = Query(None)):
     start_time = time.time()
     if name is not None:
+       #  set default images to registration
        tools.zipNrrdFiles(name, "registration")
     end_time = time.time()
     run_time = end_time - start_time
@@ -118,15 +119,6 @@ async def send_nrrd_case(data:str):
     radius = data_Obj["radius"]
     origin = data_Obj["origin"]
     if name is not None:
-        # # TODO 1: get all nrrd file paths
-        # file_paths = tools.selectNrrdPaths(name, "nrrd", "registration")
-        # # TODO 2: add base url to these paths
-        # file_paths = [Config.BASE_PATH / nrrd_path for nrrd_path in file_paths]
-        # # TODO 3: zip nrrd and json files
-        # with ZipFile('nrrd_files.zip', 'w') as zip_file:
-        #     for file_path in file_paths:
-        #         zip_file.write(file_path)
-        # Config.Current_Case_Name = name
         tools.zipNrrdFiles(name, "registration")
     return FileResponse('nrrd_files.zip', media_type='application/zip')
 
@@ -157,15 +149,22 @@ async def get_mask(name: str = Query(None)):
     if name is not None:
         Config.Current_Case_Name = name
         mask_json_path = tools.get_file_path(name, "json", "mask.json")
-        cheked = tools.check_file_exist(name, "json", "mask.json")
-        if (cheked):
-            with open(mask_json_path, mode="rb") as file:
-                file_contents = file.read()
-            file_object = BytesIO(file_contents)
+        checked = tools.check_file_exist(name, "json", "mask.json")
+        if checked:
+            file_object = tools.getReturnedJsonFormat(mask_json_path)
             return StreamingResponse(file_object, media_type="application/json")
         else:
             return False
 
+@app.get("/api/nipple_points")
+async def get_nipple_points(name: str= Query(None)):
+    checked = tools.check_file_exist(name, "json", "nipple_points.json")
+    if checked:
+        path = tools.get_file_path(name, "json", "nipple_points.json")
+        file_object = tools.getReturnedJsonFormat(path)
+        return StreamingResponse(file_object, media_type="application/json")
+    else:
+        return False
 
 @app.get("/api/display")
 async def get_display_mask_nrrd(name: str = Query(None)):
