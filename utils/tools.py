@@ -4,6 +4,7 @@ import pandas as pd
 from .setup import Config
 from pathlib import Path
 from zipfile import ZipFile
+from io import BytesIO
 
 
 def get_metadata():
@@ -113,6 +114,26 @@ def selectNrrdPaths(patient_id, file_type, limit):
             selected_paths.append(file_path)
     return selected_paths
 
+def getReturnedJsonFormat(path):
+    """
+    :param path:
+    :return: returns BytesIO for response to frontend
+    """
+    with open(path, mode="rb") as file:
+        file_contents = file.read()
+    return BytesIO(file_contents)
+
+def getJsonData(path):
+    """
+    get json core
+    :param path:
+    :return:
+    """
+    with open(path, 'rb') as file:
+        # Load the JSON data from the file into a Python object
+        return json.loads(file.read().decode('utf-8'))
+
+
 def getMaskData(path):
     """
     :param path: A mask.json file full path
@@ -120,9 +141,7 @@ def getMaskData(path):
     """
     Config.MASK_FILE_PATH = path
     if Config.MASKS is None:
-        with open(path, 'rb') as file:
-            # Load the JSON data from the file into a Python object
-            Config.MASKS = json.loads(file.read().decode('utf-8'))
+        Config.MASKS = getJsonData(path)
     return Config.MASKS
 
 def zipNrrdFiles(name, caseType):
