@@ -83,7 +83,23 @@ def get_file_path(patient_id, file_type, file_name):
             file_path_full = file_path_arr[0]
             return file_path_full
     return ""
-
+def get_category_files(patient_id, file_type, categore):
+    """
+        :param patient_id: case name
+        :param file_type: json, nrrd, nii
+        :return: file full path via pathlib
+        """
+    if Config.METADATA is not None:
+        file_df = Config.METADATA[
+            (Config.METADATA["patient_id"] == patient_id) & (Config.METADATA["file type"] == file_type)]
+        paths = list(file_df['filename'])
+        new_paths = []
+        for path in paths:
+            new_paths.append(Config.BASE_PATH / path)
+        file_path_arr = [str(path).replace("\\", "/") for path in new_paths if path.parent.name == categore and path.exists()]
+        if len(file_path_arr) > 0:
+            return file_path_arr
+    return []
 def replace_data_to_json(patient_id, slice):
     """
     :param patient_id: case name

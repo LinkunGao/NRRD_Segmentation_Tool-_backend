@@ -1,4 +1,4 @@
-# 进入venv虚拟环境
+
 # terminial-> venv/Scripts/activate.bat
 import json
 
@@ -6,11 +6,13 @@ import uvicorn
 import time
 from fastapi import FastAPI, Query, BackgroundTasks, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
+from fastapi.responses import FileResponse, StreamingResponse, Response
 from zipfile import ZipFile
 from utils import tools, Config, TumourData
 from models import model
 from task import task_oi
+from pathlib import Path
+import io
 
 app = FastAPI()
 
@@ -18,7 +20,7 @@ origins = [
     "http://127.0.0.1:5173",
 ]
 
-expose_headers = ["x-volume"]
+expose_headers = ["x-volume", "x-file-name","Content-Disposition"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -43,7 +45,22 @@ async def root():
     # # return JSONResponse( content={"da":"1515"}, headers=headers)
     return "Welcome to segmentation backend"
 
+@app.get("/api/test")
+async def test():
+    blob_content = b"This is the content of the blob."
+    blob_stream = io.BytesIO(blob_content)
 
+    # Create the response
+    response = Response(content=blob_stream.getvalue())
+
+    # Set the headers to indicate the file type and disposition
+    response.headers["Content-Type"] = "application/octet-stream"
+    response.headers["Content-Disposition"] = "attachment; filename=blob_file.txt"
+
+    # Add the string data to the response headers
+    response.headers["x-file-name"] = "This is a custom string."
+
+    return response
 
 @app.websocket('/ws')
 async def websocket_endpoint(websocket: WebSocket):
@@ -86,10 +103,21 @@ async def get_cases_name(background_tasks: BackgroundTasks):
     res["names"] = case_names
     res["details"] = []
     for name in case_names:
+        origin_nrrd_paths = tools.get_category_files(name, "nrrd", "origin")
+        registration_nrrd_paths = tools.get_category_files(name, "nrrd", "registration")
+        segmentation_nipple_paths = tools.get_category_files(name, "json", "segmentation")
+        segmentation_manual_mask_paths = tools.get_category_files(name, "json", "segmentation_manual")
+        segmentation_manual_3dobj_paths = tools.get_category_files(name, "obj", "segmentation_manual")
         json_is_exist = tools.check_file_exist(name, "json", "mask.json")
         obj_is_exist = tools.check_file_exist(name, "obj", "mask.obj")
         reg_is_exist = tools.check_file_exist(name, "nrrd", "r0.nrrd")
-        res["details"].append({"name": name, "masked": json_is_exist, "has_mesh": obj_is_exist, "registered":reg_is_exist})
+        file_paths = {"origin_nrrd_paths": origin_nrrd_paths, "registration_nrrd_paths": registration_nrrd_paths,
+                           "segmentation_nipple_paths": segmentation_nipple_paths,
+                           "segmentation_manual_mask_paths": segmentation_manual_mask_paths,
+                           "segmentation_manual_3dobj_paths": segmentation_manual_3dobj_paths}
+
+        res["details"].append({"name": name, "masked": json_is_exist, "has_mesh": obj_is_exist, "registered":reg_is_exist, "file_paths":file_paths})
+
     return res
 
 
@@ -104,6 +132,45 @@ async def send_nrrd_case(name: str = Query(None)):
     print("get files cost：{:.2f}s".format(run_time))
     return FileResponse('nrrd_files.zip', media_type='application/zip')
 
+async def process_file(file_path: Path, headers: dict):
+    if file_path.suffix == '.nrrd':
+        return FileResponse(file_path, media_type="application/octet-stream", filename=file_path.name, headers=headers)
+    elif file_path.suffix == '.json':
+        file_object = tools.getReturnedJsonFormat(file_path)
+        return StreamingResponse(file_object, media_type="application/json", headers=headers)
+    elif file_path.suffix == '.obj':
+        return FileResponse(file_path, media_type="application/octet-stream", filename=file_path.name, headers=headers)
+    else:
+        return None
+
+@app.get('/api/single-file')
+async def send_single_file(path: str = Query(None)):
+    file_path = Path(path)
+    if file_path.exists():
+        headers = {"x-file-name": file_path.name}
+        response = await process_file(file_path, headers)
+        if response:
+            return response
+        else:
+            return "Unsupported file format!"
+    else:
+        return "No file exists!"
+
+# @app.get('/api/single-file')
+# async def send_single_file(path: str = Query(None)):
+#     file_path = Path(path)
+#     if file_path.exists():
+#         headers = {"x-file-name": file_path.name}
+#         if file_path.suffix == '.nrrd':
+#             return FileResponse(file_path, media_type="application/octet-stream", filename=file_path.name, headers=headers)
+#         elif file_path.suffix == '.json':
+#             file_object = tools.getReturnedJsonFormat(file_path)
+#             return StreamingResponse(file_object, media_type="application/json", headers=headers)
+#         elif file_path.suffix == '.obj':
+#             return FileResponse(file_path, media_type="application/octet-stream", filename=file_path.name,
+#                                 headers=headers)
+#     else:
+#         return "No file exists!"
 
 @app.get('/api/caseorigin/')
 async def send_nrrd_case(name: str = Query(None)):
@@ -142,6 +209,7 @@ async def save_mask(name: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(task_oi.json_to_nii, name)
     background_tasks.add_task(task_oi.on_complete)
     return True
+
 
 
 @app.get("/api/mask")
