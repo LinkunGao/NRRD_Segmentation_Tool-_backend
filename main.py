@@ -1,4 +1,3 @@
-
 # terminial-> venv/Scripts/activate.bat
 import json
 
@@ -20,7 +19,7 @@ origins = [
     "http://127.0.0.1:5173",
 ]
 
-expose_headers = ["x-volume", "x-file-name","Content-Disposition"]
+expose_headers = ["x-volume", "x-file-name", "Content-Disposition"]
 
 app.add_middleware(
     CORSMiddleware,
@@ -45,6 +44,7 @@ async def root():
     # # return JSONResponse( content={"da":"1515"}, headers=headers)
     return "Welcome to segmentation backend"
 
+
 @app.get("/api/test")
 async def test():
     blob_content = b"This is the content of the blob."
@@ -61,6 +61,7 @@ async def test():
     response.headers["x-file-name"] = "This is a custom string."
 
     return response
+
 
 @app.websocket('/ws')
 async def websocket_endpoint(websocket: WebSocket):
@@ -106,17 +107,19 @@ async def get_cases_name(background_tasks: BackgroundTasks):
         origin_nrrd_paths = tools.get_category_files(name, "nrrd", "origin")
         registration_nrrd_paths = tools.get_category_files(name, "nrrd", "registration")
         segmentation_nipple_paths = tools.get_category_files(name, "json", "segmentation")
-        segmentation_manual_mask_paths = tools.get_category_files(name, "json", "segmentation_manual")
+        segmentation_manual_mask_paths = tools.get_category_files(name, "json", "segmentation_manual", ["sphere_points.json"])
         segmentation_manual_3dobj_paths = tools.get_category_files(name, "obj", "segmentation_manual")
         json_is_exist = tools.check_file_exist(name, "json", "mask.json")
         obj_is_exist = tools.check_file_exist(name, "obj", "mask.obj")
         reg_is_exist = tools.check_file_exist(name, "nrrd", "r0.nrrd")
         file_paths = {"origin_nrrd_paths": origin_nrrd_paths, "registration_nrrd_paths": registration_nrrd_paths,
-                           "segmentation_nipple_paths": segmentation_nipple_paths,
-                           "segmentation_manual_mask_paths": segmentation_manual_mask_paths,
-                           "segmentation_manual_3dobj_paths": segmentation_manual_3dobj_paths}
+                      "segmentation_nipple_paths": segmentation_nipple_paths,
+                      "segmentation_manual_mask_paths": segmentation_manual_mask_paths,
+                      "segmentation_manual_3dobj_paths": segmentation_manual_3dobj_paths}
 
-        res["details"].append({"name": name, "masked": json_is_exist, "has_mesh": obj_is_exist, "registered":reg_is_exist, "file_paths":file_paths})
+        res["details"].append(
+            {"name": name, "masked": json_is_exist, "has_mesh": obj_is_exist, "registered": reg_is_exist,
+             "file_paths": file_paths})
 
     return res
 
@@ -125,12 +128,13 @@ async def get_cases_name(background_tasks: BackgroundTasks):
 async def send_nrrd_case(name: str = Query(None)):
     start_time = time.time()
     if name is not None:
-       #  set default images to registration
-       tools.zipNrrdFiles(name, "registration")
+        #  set default images to registration
+        tools.zipNrrdFiles(name, "registration")
     end_time = time.time()
     run_time = end_time - start_time
     print("get files cost：{:.2f}s".format(run_time))
     return FileResponse('nrrd_files.zip', media_type='application/zip')
+
 
 async def process_file(file_path: Path, headers: dict):
     if file_path.suffix == '.nrrd':
@@ -142,6 +146,7 @@ async def process_file(file_path: Path, headers: dict):
         return FileResponse(file_path, media_type="application/octet-stream", filename=file_path.name, headers=headers)
     else:
         return None
+
 
 @app.get('/api/single-file')
 async def send_single_file(path: str = Query(None)):
@@ -155,6 +160,7 @@ async def send_single_file(path: str = Query(None)):
             return "Unsupported file format!"
     else:
         return "No file exists!"
+
 
 # @app.get('/api/single-file')
 # async def send_single_file(path: str = Query(None)):
@@ -180,7 +186,7 @@ async def send_nrrd_case(name: str = Query(None)):
 
 
 @app.get('/api/casereg/')
-async def send_nrrd_case(data:str):
+async def send_nrrd_case(data: str):
     data_Obj = json.loads(data)
     name = data_Obj["name"]
     radius = data_Obj["radius"]
@@ -204,12 +210,22 @@ async def replace_mask(replace_slice: model.Mask):
     return True
 
 
+@app.post("/api/sphere/save")
+async def save_sphere(sphere_point: model.Sphere):
+    save_data = {
+        "caseId": sphere_point.caseId,
+        "sliceId": sphere_point.sliceId,
+        "sphereRadiusMM": sphere_point.sphereRadiusMM,
+        "sphereOriginMM": sphere_point.sphereOriginMM
+    }
+    return tools.save_sphere_points_to_json(sphere_point.caseId, save_data)
+
+
 @app.get("/api/mask/save")
 async def save_mask(name: str, background_tasks: BackgroundTasks):
     background_tasks.add_task(task_oi.json_to_nii, name)
     background_tasks.add_task(task_oi.on_complete)
     return True
-
 
 
 @app.get("/api/mask")
@@ -224,8 +240,9 @@ async def get_mask(name: str = Query(None)):
         else:
             return False
 
+
 @app.get("/api/nipple_points")
-async def get_nipple_points(name: str= Query(None)):
+async def get_nipple_points(name: str = Query(None)):
     checked = tools.check_file_exist(name, "json", "nipple_points.json")
     if checked:
         path = tools.get_file_path(name, "json", "nipple_points.json")
@@ -233,6 +250,7 @@ async def get_nipple_points(name: str= Query(None)):
         return StreamingResponse(file_object, media_type="application/json")
     else:
         return False
+
 
 @app.get("/api/display")
 async def get_display_mask_nrrd(name: str = Query(None)):

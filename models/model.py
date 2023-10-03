@@ -12,3 +12,9 @@ class Mask(BaseModel):
     label: str
     mask: list
 
+
+class Sphere(BaseModel):
+    caseId: str
+    sliceId: int
+    sphereRadiusMM: int
+    sphereOriginMM: list
