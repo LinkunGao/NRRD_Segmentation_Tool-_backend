@@ -83,7 +83,7 @@ def get_file_path(patient_id, file_type, file_name):
             file_path_full = file_path_arr[0]
             return file_path_full
     return ""
-def get_category_files(patient_id, file_type, categore):
+def get_category_files(patient_id, file_type, categore, except_file_name=[]):
     """
         :param patient_id: case name
         :param file_type: json, nrrd, nii
@@ -95,11 +95,28 @@ def get_category_files(patient_id, file_type, categore):
         paths = list(file_df['filename'])
         new_paths = []
         for path in paths:
-            new_paths.append(Config.BASE_PATH / path)
+            file_path = Config.BASE_PATH / path
+            if file_path.name not in except_file_name:
+                new_paths.append(file_path)
+
         file_path_arr = [str(path).replace("\\", "/") for path in new_paths if path.parent.name == categore and path.exists()]
         if len(file_path_arr) > 0:
             return file_path_arr
     return []
+
+
+def save_sphere_points_to_json(patient_id, data):
+
+    sphere_json_path = get_file_path(patient_id, "json", "sphere_points.json")
+    if sphere_json_path == "":
+        return False
+    sphere_json_path = Path(sphere_json_path)
+    if not sphere_json_path.parent.exists():
+        sphere_json_path.mkdir(parents=True, exist_ok=True)
+
+    with open(sphere_json_path, "w") as json_file:
+        json.dump(data, json_file)
+    return True
 def replace_data_to_json(patient_id, slice):
     """
     :param patient_id: case name
