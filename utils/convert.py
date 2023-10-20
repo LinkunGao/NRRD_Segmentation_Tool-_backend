@@ -17,6 +17,7 @@ def convert_json_to_obj(patient_id):
 
     if Config.MASKS == None:
         if Config.ClearAllMask:
+            print("Clear all masks by frontend, So set the  Config.Updated_Mesh to True.")
             Config.Updated_Mesh = True
             return
         else:
@@ -26,6 +27,7 @@ def convert_json_to_obj(patient_id):
             #     user_file.close()
             getMaskData(json_source)
             if Config.MASKS["hasData"] == False:
+                print("No mask data has been found, So set the  Config.Updated_Mesh to True.")
                 Config.Updated_Mesh = True
                 return
             parsed_json = Config.MASKS["label1"]
@@ -72,8 +74,11 @@ def convert_json_to_obj(patient_id):
                 out_file.write("vn {0} {1} {2}\n".format(item[0], item[1], item[2]))
             for item in faces:
                 out_file.write("f {0}//{0} {1}//{1} {2}//{2}\n".format(item[0], item[1], item[2]))
+
+            print("finish write obj")
         out_file.close()
         # tell websocket the mesh is ready send to frontend
+        print("Finish convert mask to obj, So set the  Config.Updated_Mesh to True.")
         Config.Updated_Mesh = True
 
     except RuntimeError as e:

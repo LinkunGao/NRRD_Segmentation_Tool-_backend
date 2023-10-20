@@ -74,13 +74,15 @@ async def websocket_endpoint(websocket: WebSocket):
             if Config.Updated_Mesh:
                 await send_obj_to_frontend(Config.Current_Case_Name)
                 Config.Updated_Mesh = False
-    except:
+    except Exception as e:
+        print("closed", e)
         Config.Connected_Websocket = None
 
 
 async def send_obj_to_frontend(patient_id):
     obj_path = tools.get_file_path(patient_id, "obj", "mask.obj")
-    if obj_path.exists():
+    file_exists = obj_path != "" and obj_path.exists()
+    if file_exists:
         with open(obj_path, "rb") as file:
             file_data = file.read()
         if Config.Connected_Websocket != None:
@@ -161,23 +163,6 @@ async def send_single_file(path: str = Query(None)):
     else:
         return "No file exists!"
 
-
-# @app.get('/api/single-file')
-# async def send_single_file(path: str = Query(None)):
-#     file_path = Path(path)
-#     if file_path.exists():
-#         headers = {"x-file-name": file_path.name}
-#         if file_path.suffix == '.nrrd':
-#             return FileResponse(file_path, media_type="application/octet-stream", filename=file_path.name, headers=headers)
-#         elif file_path.suffix == '.json':
-#             file_object = tools.getReturnedJsonFormat(file_path)
-#             return StreamingResponse(file_object, media_type="application/json", headers=headers)
-#         elif file_path.suffix == '.obj':
-#             return FileResponse(file_path, media_type="application/octet-stream", filename=file_path.name,
-#                                 headers=headers)
-#     else:
-#         return "No file exists!"
-
 @app.get('/api/caseorigin/')
 async def send_nrrd_case(name: str = Query(None)):
     if name is not None:
@@ -223,6 +208,7 @@ async def save_sphere(sphere_point: model.Sphere):
 
 @app.get("/api/mask/save")
 async def save_mask(name: str, background_tasks: BackgroundTasks):
+    Config.Current_Case_Name = name
     background_tasks.add_task(task_oi.json_to_nii, name)
     background_tasks.add_task(task_oi.on_complete)
     return True
@@ -263,9 +249,10 @@ async def get_display_mask_nrrd(name: str = Query(None)):
 
 @app.get("/api/mesh")
 async def get_display_mask_nrrd(name: str = Query(None)):
+
     mask_mesh_path = tools.get_file_path(name, "obj", "mask.obj")
     mask_json_path = tools.get_file_path(name, "json", "mask.json")
-    if mask_mesh_path.exists():
+    if mask_mesh_path != "" and mask_mesh_path.exists():
         with open(mask_json_path) as user_file:
             file_contents = user_file.read()
             parsed_json = json.loads(file_contents)
@@ -290,6 +277,7 @@ async def clear_mesh(name: str = Query(None)):
             print(f"{mesh_obj_path.name} file delete successfully!")
         except OSError as e:
             print(f"fail to delete file!")
+    Config.ClearAllMask = False
     return "success"
 
 
