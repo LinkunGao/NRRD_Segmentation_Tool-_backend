@@ -16,5 +16,7 @@ class Mask(BaseModel):
 class Sphere(BaseModel):
     caseId: str
     sliceId: int
-    sphereRadiusMM: int
-    sphereOriginMM: list
+    origin: list
+    spacing: list
+    sphereRadiusPixel: int
+    sphereOriginPixel: list

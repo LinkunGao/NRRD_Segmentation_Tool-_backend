@@ -201,8 +201,10 @@ async def save_sphere(sphere_point: model.Sphere):
     save_data = {
         "caseId": sphere_point.caseId,
         "sliceId": sphere_point.sliceId,
-        "sphereRadiusMM": sphere_point.sphereRadiusMM,
-        "sphereOriginMM": sphere_point.sphereOriginMM
+        "origin": sphere_point.origin,
+        "spacing": sphere_point.spacing,
+        "sphereRadiusPixel": sphere_point.sphereRadiusPixel,
+        "sphereOriginPixel": sphere_point.sphereOriginPixel
     }
     return tools.save_sphere_points_to_json(sphere_point.caseId, save_data)
 
