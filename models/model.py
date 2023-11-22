@@ -18,5 +18,5 @@ class Sphere(BaseModel):
     sliceId: int
     origin: list
     spacing: list
-    sphereRadiusPixel: int
-    sphereOriginPixel: list
+    sphereRadiusMM: int
+    sphereOriginMM: list
