@@ -6,6 +6,7 @@ import nibabel as nib
 from .tools import get_file_path, getMaskData
 from .setup import Config, TumourData
 
+
 def convert_json_to_obj(patient_id):
     """
     convert nii file to obj file
@@ -14,6 +15,15 @@ def convert_json_to_obj(patient_id):
     """
     json_source = get_file_path(patient_id, "json", "mask.json")
     dest = get_file_path(patient_id, "obj", "mask.obj")
+
+    if json_source is None:
+        print(f"mask.json path is None, Check your manifest.xlsx file's patient_id {patient_id}")
+        Config.Updated_Mesh = True
+        return
+    elif dest is None:
+        print(f"mask.obj path is None, Check your manifest.xlsx file's patient_id {patient_id}")
+        Config.Updated_Mesh = True
+        return
 
     if Config.MASKS == None:
         if Config.ClearAllMask:
@@ -52,7 +62,7 @@ def convert_json_to_obj(patient_id):
     spacing = parsed_json[0]["voxelSpacing"]
     origin = parsed_json[0]["spaceOrigin"]
     count = np.count_nonzero(arr > 0)
-    TumourData.volume = count*spacing[0]*spacing[1]*spacing[2]
+    TumourData.volume = count * spacing[0] * spacing[1] * spacing[2]
     Config.MASKS['volume'] = TumourData.volume
     try:
         verts, faces, normals, values = marching_cubes(arr)
@@ -106,6 +116,16 @@ def convert_to_nii(patient_id):
     origin_nrrd_image = sitk.ReadImage(nrrd_path)
     headerKeys = origin_nrrd_image.GetMetaDataKeys()
 
+    if nrrd_path is None:
+        print("contrast_0.nrrd path is None")
+        return
+    elif mask_path is None:
+        print("mask.json path is None")
+        return
+    elif nii_path is None:
+        print("mask.nii.gz path is None")
+        return
+
     with open(mask_path) as user_file:
         file_contents = user_file.read()
         parsed_json_mask = json.loads(file_contents)
@@ -122,7 +142,7 @@ def convert_to_nii(patient_id):
         #     convert_core(parsed_json_3, nii_path_3, headerKeys, origin_nrrd_image)
 
 
-def convert_core(parsed_json,nii_path,headerKeys,origin_nrrd_image):
+def convert_core(parsed_json, nii_path, headerKeys, origin_nrrd_image):
     images = []
     width = parsed_json[0]["width"]
     height = parsed_json[0]["height"]
@@ -158,6 +178,7 @@ def convert_core(parsed_json,nii_path,headerKeys,origin_nrrd_image):
         print("An error occurred: ", e)
         import traceback
         print(traceback.format_exc())
+
 
 def convert_to_obj(patient_id):
     """
@@ -198,6 +219,7 @@ def convert_to_obj(patient_id):
             print(f"{dest.name} file delete successfully!")
         except OSError as e:
             print(f"fail to delete file!")
+
 
 def convert_to_nii_sigel_channel(patient_id):
     nii_image = convert_json_data(patient_id)

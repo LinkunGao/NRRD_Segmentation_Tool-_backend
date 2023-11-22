@@ -34,7 +34,7 @@ def check_file_exist(patient_id, filetype, filename):
     :return: if there is a mask.json file return true, else create a mask.json and return false
     """
     file_path = get_file_path(patient_id, filetype, filename)
-    if file_path != "":
+    if file_path is not None:
         if filetype == "json":
             # Create the directory and all parent directories if they don't exist
             file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -55,10 +55,11 @@ def write_data_to_json(patient_id, masks):
     # todo 1: find mask.json path base on patient_id
     try:
         mask_json_path = get_file_path(patient_id, "json", "mask.json")
-        Config.MASK_FOLDER_PATH = mask_json_path.parent
-        Config.MASK_FILE_PATH = mask_json_path
-        Config.MASKS = masks
-        saveMaskData()
+        if mask_json_path is not None:
+            Config.MASK_FOLDER_PATH = mask_json_path.parent
+            Config.MASK_FILE_PATH = mask_json_path
+            Config.MASKS = masks
+            saveMaskData()
     except :
         print("File not found!")
 
@@ -82,7 +83,7 @@ def get_file_path(patient_id, file_type, file_name):
         if len(file_path_arr) >0:
             file_path_full = file_path_arr[0]
             return file_path_full
-    return ""
+    return None
 def get_category_files(patient_id, file_type, categore, except_file_name=[]):
     """
         :param patient_id: case name
@@ -108,7 +109,7 @@ def get_category_files(patient_id, file_type, categore, except_file_name=[]):
 def save_sphere_points_to_json(patient_id, data):
 
     sphere_json_path = get_file_path(patient_id, "json", "sphere_points.json")
-    if sphere_json_path == "":
+    if sphere_json_path is None:
         return False
     sphere_json_path = Path(sphere_json_path)
     if not sphere_json_path.parent.exists():
@@ -126,7 +127,7 @@ def replace_data_to_json(patient_id, slice):
     index = slice.sliceId
     label = slice.label
     if Config.MASKS == None:
-        if mask_json_path.is_file():
+        if mask_json_path is not None and mask_json_path.is_file():
             getMaskData(mask_json_path)
     Config.MASKS[label][index]["data"] = slice.mask
     Config.MASKS["hasData"] = True

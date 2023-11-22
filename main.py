@@ -81,17 +81,18 @@ async def websocket_endpoint(websocket: WebSocket):
 
 async def send_obj_to_frontend(patient_id):
     obj_path = tools.get_file_path(patient_id, "obj", "mask.obj")
-    file_exists = obj_path != "" and obj_path.exists()
+    print("obj_path:",obj_path)
+    file_exists = (obj_path is not None) and obj_path.exists()
     if file_exists:
         with open(obj_path, "rb") as file:
             file_data = file.read()
-        if Config.Connected_Websocket != None:
+        if Config.Connected_Websocket is not None:
             await Config.Connected_Websocket.send_bytes(file_data)
             volume_json = {"volume": TumourData.volume}
             await Config.Connected_Websocket.send_text(json.dumps(volume_json))
             print("send mesh to frontend!")
     else:
-        if Config.Connected_Websocket != None:
+        if Config.Connected_Websocket is not None:
             await Config.Connected_Websocket.send_text("delete")
             print("send to frontend, delete mesh!")
 
@@ -200,6 +201,8 @@ async def save_sphere(sphere_point: model.Sphere):
     save_data = {
         "caseId": sphere_point.caseId,
         "sliceId": sphere_point.sliceId,
+        "origin": sphere_point.origin,
+        "spacing": sphere_point.spacing,
         "sphereRadiusMM": sphere_point.sphereRadiusMM,
         "sphereOriginMM": sphere_point.sphereOriginMM
     }
@@ -252,7 +255,7 @@ async def get_display_mask_nrrd(name: str = Query(None)):
 
     mask_mesh_path = tools.get_file_path(name, "obj", "mask.obj")
     mask_json_path = tools.get_file_path(name, "json", "mask.json")
-    if mask_mesh_path != "" and mask_mesh_path.exists():
+    if (mask_mesh_path is not None) and (mask_mesh_path.exists()):
         with open(mask_json_path) as user_file:
             file_contents = user_file.read()
             parsed_json = json.loads(file_contents)
@@ -271,7 +274,7 @@ async def get_display_mask_nrrd(name: str = Query(None)):
 async def clear_mesh(name: str = Query(None)):
     Config.ClearAllMask = True
     mesh_obj_path = tools.get_file_path(name, "obj", "mask.obj")
-    if mesh_obj_path.exists():
+    if (mesh_obj_path is not None) and mesh_obj_path.exists():
         try:
             mesh_obj_path.unlink()
             print(f"{mesh_obj_path.name} file delete successfully!")
