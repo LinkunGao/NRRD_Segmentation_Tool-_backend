@@ -261,7 +261,7 @@ async def get_display_mask_nrrd(name: str = Query(None)):
 
 
 @app.get("/api/mesh")
-async def get_display_mask_nrrd(name: str = Query(None)):
+async def get_display_segment_tumour_model(name: str = Query(None)):
 
     mask_mesh_path = tools.get_file_path(name, "obj", "mask.obj")
     mask_json_path = tools.get_file_path(name, "json", "mask.json")
@@ -279,6 +279,15 @@ async def get_display_mask_nrrd(name: str = Query(None)):
     else:
         return False
 
+@app.get("/api/breast_model")
+async def get_display_breast_model(name: str = Query(None)):
+
+    breast_mesh_path = tools.get_file_path(name, "obj", "prone_surface.obj")
+    if breast_mesh_path is not None:
+        file_res = FileResponse(breast_mesh_path, media_type="application/octet-stream", filename="prone_surface.obj")
+        return file_res
+    else:
+        return False
 
 @app.get("/api/clearmesh")
 async def clear_mesh(name: str = Query(None)):
