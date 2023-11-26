@@ -109,14 +109,17 @@ async def get_cases_name(background_tasks: BackgroundTasks):
     for name in case_names:
         origin_nrrd_paths = tools.get_category_files(name, "nrrd", "origin")
         registration_nrrd_paths = tools.get_category_files(name, "nrrd", "registration")
-        segmentation_nipple_paths = tools.get_category_files(name, "json", "segmentation")
+        segmentation_breast_points_paths = tools.get_category_files(name, "json", "segmentation")
+        segmentation_breast_model_paths = tools.get_category_files(name, "obj", "segmentation")
         segmentation_manual_mask_paths = tools.get_category_files(name, "json", "segmentation_manual", ["sphere_points.json"])
         segmentation_manual_3dobj_paths = tools.get_category_files(name, "obj", "segmentation_manual")
         json_is_exist = tools.check_file_exist(name, "json", "mask.json")
         obj_is_exist = tools.check_file_exist(name, "obj", "mask.obj")
         reg_is_exist = tools.check_file_exist(name, "nrrd", "r0.nrrd")
-        file_paths = {"origin_nrrd_paths": origin_nrrd_paths, "registration_nrrd_paths": registration_nrrd_paths,
-                      "segmentation_nipple_paths": segmentation_nipple_paths,
+        file_paths = {"origin_nrrd_paths": origin_nrrd_paths,
+                      "registration_nrrd_paths": registration_nrrd_paths,
+                      "segmentation_breast_points_paths": segmentation_breast_points_paths,
+                      "segmentation_breast_model_paths": segmentation_breast_model_paths,
                       "segmentation_manual_mask_paths": segmentation_manual_mask_paths,
                       "segmentation_manual_3dobj_paths": segmentation_manual_3dobj_paths}
 
@@ -230,13 +233,20 @@ async def get_mask(name: str = Query(None)):
             return False
 
 
-@app.get("/api/nipple_points")
-async def get_nipple_points(name: str = Query(None)):
-    checked = tools.check_file_exist(name, "json", "nipple_points.json")
+@app.get("/api/breast_points")
+async def get_nipple_points(name: str = Query(None), filename: str = Query(None)):
+
+    checked = tools.check_file_exist(name, "json", f"{filename}.json")
+
+    print(filename, checked)
     if checked:
-        path = tools.get_file_path(name, "json", "nipple_points.json")
-        file_object = tools.getReturnedJsonFormat(path)
-        return StreamingResponse(file_object, media_type="application/json")
+        path = tools.get_file_path(name, "json", f"{filename}.json")
+        if "nipple" in filename:
+            file_object = tools.getReturnedJsonFormat(path)
+            return StreamingResponse(file_object, media_type="application/json")
+        else:
+            # file_object = tools.getReturnedJsonFormat(path)
+            return FileResponse(path, media_type="application/json")
     else:
         return False
 
