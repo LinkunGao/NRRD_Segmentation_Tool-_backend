@@ -3,7 +3,7 @@ import json
 
 import uvicorn
 import time
-from fastapi import FastAPI, Query, BackgroundTasks, WebSocket
+from fastapi import FastAPI, Query, BackgroundTasks, WebSocket, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, StreamingResponse, Response
 from zipfile import ZipFile
@@ -237,8 +237,6 @@ async def get_mask(name: str = Query(None)):
 async def get_nipple_points(name: str = Query(None), filename: str = Query(None)):
 
     checked = tools.check_file_exist(name, "json", f"{filename}.json")
-
-    print(filename, checked)
     if checked:
         path = tools.get_file_path(name, "json", f"{filename}.json")
         if "nipple" in filename:
@@ -262,7 +260,6 @@ async def get_display_mask_nrrd(name: str = Query(None)):
 
 @app.get("/api/mesh")
 async def get_display_segment_tumour_model(name: str = Query(None)):
-
     mask_mesh_path = tools.get_file_path(name, "obj", "mask.obj")
     mask_json_path = tools.get_file_path(name, "json", "mask.json")
     if (mask_mesh_path is not None) and (mask_mesh_path.exists()):
@@ -277,7 +274,8 @@ async def get_display_segment_tumour_model(name: str = Query(None)):
                                 headers=headers)
         return file_res
     else:
-        return False
+        # return False
+        raise HTTPException(status_code=404, detail="Item not found")
 
 @app.get("/api/breast_model")
 async def get_display_breast_model(name: str = Query(None)):
