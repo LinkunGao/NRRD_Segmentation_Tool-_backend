@@ -1,11 +1,18 @@
 from pathlib import Path
 from dotenv import load_dotenv
 import os
+import sys
 
 
 def get_base_from_env():
     env_path = Path('.') / '.env'
     load_dotenv(dotenv_path=env_path)
+
+
+    if sys.platform.startswith('linux') or sys.platform.startswith('darwin'):
+        return os.environ["BASE"]
+    elif sys.platform.startswith('win'):
+        return os.environ["BASE_locally"]
     return os.environ["BASE"]
 
 class Config:
